@@ -3,11 +3,13 @@ package fr.cirad.test;
 import com.github.jmchilton.blend4j.galaxy.beans.*;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputs.InputSourceType;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputs.WorkflowInput;
+import com.github.jmchilton.blend4j.galaxy.beans.WorkflowStepDefinition.WorkflowStepOutput;
 
 import java.io.Console;
 import java.io.File;
 import java.sql.Time;
 import java.util.*;
+import java.util.Map.Entry;
 
 import com.github.jmchilton.blend4j.galaxy.*;
 
@@ -70,7 +72,7 @@ public class Blend4jTest {
 			String name = toolSection.getName();
 			List<Tool> tools = toolSection.getElems();
 
-			if (name != null) {
+			if (name != null && "phylogenetics".equals(id)) {
 				System.out.println(String.format("Tool Section: %s (ID: %s)", name, id));
 
 				for (Tool tool : tools) {
@@ -98,20 +100,26 @@ public class Blend4jTest {
 		List<Workflow> workflows = workflowsClient.getWorkflows();
 		for (Workflow workflow : workflows) {
 			WorkflowDetails workflowDetails = workflowsClient.showWorkflow(workflow.getId());
-			Map<String, WorkflowStepDefinition> step = workflowDetails.getSteps();
-			for (Map.Entry<String, WorkflowStepDefinition> workflowStepDefinition: step.entrySet()) {
-				System.out.println("keystep = " + workflowStepDefinition.getKey());
-				System.out.println("type = " + workflowStepDefinition.getValue().getType());
-			}
 			String author = workflowDetails.getOwner();
 			String name = workflow.getName();
 			String id = workflow.getId();
-			String message = String.format("Found workflow with id '%s' and name '%s', created by '%s'", id, name,
-					author);
 
-			System.out.println(message);
+			System.out.println("\n" + String.format("Workflow id '%s', name '%s', created by '%s'", id, name, author));
 
-			System.out.println("Workflow Inputs:");
+			Map<String, WorkflowStepDefinition> stepEntry = workflowDetails.getSteps();
+			for (Map.Entry<String, WorkflowStepDefinition> workflowStepDefinition: stepEntry.entrySet()) {
+				WorkflowStepDefinition step = workflowStepDefinition.getValue();
+				System.out.println(" Workflow step key '" + workflowStepDefinition.getKey() + "', type: " + step.getType());
+				for (Entry<String, WorkflowStepOutput> workflowStepOutputEntry : step.getInputSteps().entrySet()) {
+					WorkflowStepOutput workflowStepOutput = workflowStepOutputEntry.getValue();
+					System.out.println("  Step input '" + workflowStepOutputEntry.getKey()  + "': " + workflowStepOutput.getSourceStep() + " / " + workflowStepOutput.getStepOutput());
+				}
+				for (Entry<String, Object> toolInput : step.getToolInputs().entrySet()) {
+					System.out.println("  Tool input '" + toolInput.getKey() + "': " + toolInput.getValue() + (toolInput.getValue() != null ? " / " + toolInput.getValue().getClass() : ""));
+				}
+			}
+
+			System.out.println(" Workflow Inputs:");
 			Map<String, WorkflowInputDefinition> inputDefinitions = workflowDetails.getInputs();
 
 			for (Map.Entry<String, WorkflowInputDefinition> entry : inputDefinitions.entrySet()) {
@@ -120,10 +128,12 @@ public class Blend4jTest {
 
 				String label = inputDefinition.getLabel();
 				String value = inputDefinition.getValue();
+				String uuid = inputDefinition.getUuid();
 
 				System.out.println("  Input Index: " + inputIndex);
 				System.out.println("  Input Label: " + label);
 				System.out.println("  Input Value: " + value);
+				System.out.println("  Input uuid: " + uuid);
 				System.out.println();
 			}
 		}
@@ -186,8 +196,9 @@ public class Blend4jTest {
 	 */
 	public static void main(String[] args) {
 		String galaxyUrl = "https://usegalaxy.fr/";
-		// String apiKey = "0312f94216df267df05771f1e9906def"; // Dorian apiKey
-		String apiKey = "a4aa09a1acab045685b6c367a48f9438";  // Yoan apiKey
+		 String apiKey = "9c48c14919ac595ec255619d1a57b030"; // Guilhem apiKey
+//		 String apiKey = "917878cd12fa17e82807256c6ce3cb20"; // Dorian apiKey
+//		String apiKey = "a4aa09a1acab045685b6c367a48f9438";  // Yoan apiKey
 //		String toolID = "toolshed.g2.bx.psu.edu/repos/iuc/rapidnj/rapidnj/2.3.2";
 //		String pathfasta = "/home/biggio/Téléchargements/TAIR10_chr_all.fas";
 //		List<String> parameters = new ArrayList<>();
@@ -197,7 +208,7 @@ public class Blend4jTest {
 		try {
 //			galaxyApiClient.listHistory();
 //			galaxyApiClient.listTools();
-//			galaxyApiClient.listWorkflows();
+			galaxyApiClient.listWorkflows();
 //			galaxyApiClient.listDatasetsInHistory();
 //			galaxyApiClient.launchJob(toolID, parameters);
 		} catch (Exception e) {
