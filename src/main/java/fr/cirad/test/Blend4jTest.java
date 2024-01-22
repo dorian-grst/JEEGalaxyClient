@@ -4,10 +4,16 @@ import com.github.jmchilton.blend4j.galaxy.beans.*;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputs.InputSourceType;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputs.WorkflowInput;
 
-import java.util.List;
-import java.util.Map;
+import java.io.Console;
+import java.io.File;
+import java.sql.Time;
+import java.util.*;
 
 import com.github.jmchilton.blend4j.galaxy.*;
+
+import com.sun.jersey.api.client.ClientResponse;
+
+import javax.xml.transform.Source;
 
 public class Blend4jTest {
 
@@ -20,12 +26,42 @@ public class Blend4jTest {
 	}
 
 	/**
+	 * Launch a job
+	 */
+	public void launchJob(String jobID, List<String> filesPath) throws Exception {
+		GalaxyInstance galaxyInstance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey);
+		History history = galaxyInstance.getHistoriesClient().create(new History("Job history"));
+		Job job = new Job();
+		job.setToolId(jobID);
+		Date date = new Date();
+		job.setCreated(date);
+		job.setState("Creation");
+
+		FileLibraryUpload upload = new FileLibraryUpload();
+		upload.setFile(new File(filesPath.get(0)));
+		String[] file = filesPath.get(0).split("/");
+		upload.setName(file[file.length - 1]);
+		upload.setContent("Je ne sais pas quoi écrire pour le content");
+		upload.setFileType("fasta");
+		upload.setCreateType(LibraryUpload.CreateType.FILE);
+
+
+		ClientResponse clientResponse = galaxyInstance.getLibrariesClient().uploadFile(history.getId(), upload);
+
+
+		galaxyInstance.getJobsClient().getJobs().add(job);
+
+		ToolsClient toolsClient = galaxyInstance.getToolsClient();
+	}
+
+	/**
 	 * Lists all available tools in Galaxy along with their sections. Prints the
 	 * Tool Section name, Tool name, and Tool description.
 	 */
 	public void listTools() throws Exception {
 		GalaxyInstance galaxyInstance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey);
 		ToolsClient toolsClient = galaxyInstance.getToolsClient();
+
 
 		List<ToolSection> toolSections = toolsClient.getTools();
 		System.out.println("Available Tools:");
@@ -41,6 +77,8 @@ public class Blend4jTest {
 					if (tool != null) {
 						String toolName = tool.getName();
 						String toolId = tool.getDescription();
+
+//						List<ToolParameter> toolParameters = tool.getInputs();
 						System.out.println(String.format("  Tool: %s (Description: %s)", toolName, toolId));
 					}
 				}
@@ -60,6 +98,11 @@ public class Blend4jTest {
 		List<Workflow> workflows = workflowsClient.getWorkflows();
 		for (Workflow workflow : workflows) {
 			WorkflowDetails workflowDetails = workflowsClient.showWorkflow(workflow.getId());
+			Map<String, WorkflowStepDefinition> step = workflowDetails.getSteps();
+			for (Map.Entry<String, WorkflowStepDefinition> workflowStepDefinition: step.entrySet()) {
+				System.out.println("keystep = " + workflowStepDefinition.getKey());
+				System.out.println("type = " + workflowStepDefinition.getValue().getType());
+			}
 			String author = workflowDetails.getOwner();
 			String name = workflow.getName();
 			String id = workflow.getId();
@@ -119,7 +162,7 @@ public class Blend4jTest {
 				for (HistoryContents historyContents : historyContentsList) {
 					if ("dataset".equals(historyContents.getHistoryContentType())) {
 						Dataset dataset = historiesClient.showDataset(id, historyContents.getId());
-						if (dataset != null) {
+						if (dataset != null && !dataset.isDeleted()) {
 							String datasetId = dataset.getId();
 							String datasetName = dataset.getName();
 							String datasetDataType = dataset.getDataType();
@@ -143,14 +186,20 @@ public class Blend4jTest {
 	 */
 	public static void main(String[] args) {
 		String galaxyUrl = "https://usegalaxy.fr/";
-		String apiKey = "0312f94216df267df05771f1e9906def";
+		// String apiKey = "0312f94216df267df05771f1e9906def"; // Dorian apiKey
+		String apiKey = "a4aa09a1acab045685b6c367a48f9438";  // Yoan apiKey
+//		String toolID = "toolshed.g2.bx.psu.edu/repos/iuc/rapidnj/rapidnj/2.3.2";
+//		String pathfasta = "/home/biggio/Téléchargements/TAIR10_chr_all.fas";
+//		List<String> parameters = new ArrayList<>();
+//		parameters.add(pathfasta);
 
 		Blend4jTest galaxyApiClient = new Blend4jTest(galaxyUrl, apiKey);
 		try {
-			galaxyApiClient.listHistory();
+//			galaxyApiClient.listHistory();
 //			galaxyApiClient.listTools();
 //			galaxyApiClient.listWorkflows();
 //			galaxyApiClient.listDatasetsInHistory();
+//			galaxyApiClient.launchJob(toolID, parameters);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
