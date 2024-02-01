@@ -2,6 +2,8 @@ package fr.cirad.test;
 
 import java.io.File;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -22,15 +24,19 @@ import com.github.jmchilton.blend4j.galaxy.beans.FileLibraryUpload;
 import com.github.jmchilton.blend4j.galaxy.beans.History;
 import com.github.jmchilton.blend4j.galaxy.beans.HistoryContents;
 import com.github.jmchilton.blend4j.galaxy.beans.HistoryDetails;
+import com.github.jmchilton.blend4j.galaxy.beans.InvocationBriefs;
+import com.github.jmchilton.blend4j.galaxy.beans.InvocationDetails;
+import com.github.jmchilton.blend4j.galaxy.beans.InvocationStepDetails;
 import com.github.jmchilton.blend4j.galaxy.beans.Job;
 import com.github.jmchilton.blend4j.galaxy.beans.LibraryUpload;
 import com.github.jmchilton.blend4j.galaxy.beans.Tool;
-import com.github.jmchilton.blend4j.galaxy.beans.ToolParameter;
 import com.github.jmchilton.blend4j.galaxy.beans.ToolSection;
 import com.github.jmchilton.blend4j.galaxy.beans.Workflow;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowDetails;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputDefinition;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputs;
+import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputs.InputSourceType;
+import com.github.jmchilton.blend4j.galaxy.beans.WorkflowInputs.WorkflowInput;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowOutputs;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowStepDefinition;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowStepDefinition.WorkflowStepOutput;
@@ -176,156 +182,31 @@ public class Blend4jTest {
 	 * Lists all datasets in each history in Galaxy. Prints the dataset id, name,
 	 * data type, and file size.
 	 */
-	public void listDatasetsInHistory() throws Exception {
+	public void listDatasetsInHistory(String historyId) throws Exception {
 		GalaxyInstance galaxyInstance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey);
 		HistoriesClient historiesClient = galaxyInstance.getHistoriesClient();
 
-		for (History history : historiesClient.getHistories()) {
-			String id = history.getId();
-			HistoryDetails historyDetails = historiesClient.showHistory(id);
+		HistoryDetails historyDetails = historiesClient.showHistory(historyId);
 
-			if (historyDetails != null) {
-				System.out.println("Datasets");
-				List<HistoryContents> historyContentsList = historiesClient.showHistoryContents(id);
-				for (HistoryContents historyContents : historyContentsList) {
-					if ("dataset".equals(historyContents.getHistoryContentType())) {
-						Dataset dataset = historiesClient.showDataset(id, historyContents.getId());
-						if (dataset != null && !dataset.isDeleted()) {
-							String datasetId = dataset.getId();
-							String datasetName = dataset.getName();
-							String datasetDataType = dataset.getDataType();
-							Integer datasetFileSize = dataset.getFileSize();
+		if (historyDetails != null) {
+			System.out.println("List of datasets in history " + historyDetails.getName() + " (" + historyId + ")");
+			List<HistoryContents> historyContentsList = historiesClient.showHistoryContents(historyId);
+			for (HistoryContents historyContents : historyContentsList) {
+				if ("dataset".equals(historyContents.getHistoryContentType())) {
+					Dataset dataset = historiesClient.showDataset(historyId, historyContents.getId());
+					if (dataset != null && !dataset.isDeleted()) {
+						String datasetId = dataset.getId();
+						String datasetName = dataset.getName();
+						String datasetDataType = dataset.getDataType();
+						Integer datasetFileSize = dataset.getFileSize();
 
-							System.out.println("  Dataset ID: " + datasetId);
-							System.out.println("  Dataset Name: " + datasetName);
-							System.out.println("  Dataset Data Type: " + datasetDataType);
-							System.out.println("  Dataset File Size: " + datasetFileSize);
-							System.out.println();
-						}
+						System.out.println("  Dataset ID: " + datasetId);
+						System.out.println("  Dataset Name: " + datasetName);
+						System.out.println("  Dataset Data Type: " + datasetDataType);
+						System.out.println("  Dataset File Size: " + datasetFileSize);
+						System.out.println();
 					}
 				}
-			}
-		}
-	}
-
-	public void runWorkflow(String historyName, String workflowName) throws Exception {
-		GalaxyInstance galaxyInstance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey, true);
-		WorkflowsClient workflowsClient = galaxyInstance.getWorkflowsClient();
-
-		// Find history
-		HistoriesClient historyClient = galaxyInstance.getHistoriesClient();
-		History matchingHistory = null;
-		for (History history : historyClient.getHistories()) {
-			if (history.getName().equals(historyName)) {
-				matchingHistory = history;
-				break; // Ajoutez cette ligne pour sortir de la boucle une fois que l'historique est
-						// trouvé
-			}
-		}
-
-		if (matchingHistory == null) {
-			System.out.println("Aucun historique trouvé avec le nom : " + historyName);
-			return; // Quittez la méthode si l'historique n'est pas trouvé
-		}
-
-		String input1Id = null;
-		String input2Id = null;
-		for (HistoryContents historyDataset : historyClient.showHistoryContents(matchingHistory.getId())) {
-			if (historyDataset.getName().equals("Input1")) {
-				input1Id = historyDataset.getId();
-			}
-			if (historyDataset.getName().equals("Input2")) {
-				input2Id = historyDataset.getId();
-			}
-		}
-
-		Workflow matchingWorkflow = null;
-		for (Workflow workflow : workflowsClient.getWorkflows()) {
-			if (workflow.getName().equals(workflowName)) {
-				matchingWorkflow = workflow;
-			}
-		}
-
-		WorkflowDetails workflowDetails = workflowsClient.showWorkflow(matchingWorkflow.getId());
-		String workflowInput1Id = null;
-		String workflowInput2Id = null;
-		for (Map.Entry<String, WorkflowInputDefinition> inputEntry : workflowDetails.getInputs().entrySet()) {
-			String label = inputEntry.getValue().getLabel();
-			if (label.equals("WorkflowInput1")) {
-				workflowInput1Id = inputEntry.getKey();
-			}
-			if (label.equals("WorkflowInput2")) {
-				workflowInput2Id = inputEntry.getKey();
-			}
-		}
-		WorkflowInputs inputs = new WorkflowInputs();
-		inputs.setDestination(new WorkflowInputs.ExistingHistory(matchingHistory.getId()));
-		inputs.setWorkflowId(matchingWorkflow.getId());
-		inputs.setInput(workflowInput1Id,
-				new WorkflowInputs.WorkflowInput(input1Id, WorkflowInputs.InputSourceType.HDA));
-		inputs.setInput(workflowInput2Id,
-				new WorkflowInputs.WorkflowInput(input2Id, WorkflowInputs.InputSourceType.HDA));
-		ToolParameter tool = new ToolParameter("from_history_id", matchingHistory.getId());
-
-		WorkflowOutputs output = workflowsClient.runWorkflow(inputs);
-
-		System.out.println("Running workflow in history " + output.getHistoryId());
-		for (String outputId : output.getOutputIds()) {
-			System.out.println("  Workflow writing to output id " + outputId);
-		}
-	}
-
-	public void pushFilesToGalaxyHistory(List<String> fileUrls) {
-		GalaxyInstance gi = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey, true);
-		HistoriesClient hc = gi.getHistoriesClient();
-		String targetHistName = "TestHistory1";
-		History targetHist = null;
-
-		Exception exp = null;
-		try {
-			for (History h : hc.getHistories())
-				if (targetHistName.equals(h.getName())) {
-					System.out.println("Found existing history '" + targetHistName + "' on " + this.galaxyUrl);
-					targetHist = h;
-					break;
-				}
-
-			if (targetHist == null) {
-				targetHist = hc.create(new History(targetHistName));
-				System.out.println("History '" + targetHistName + "' created on " + this.galaxyUrl);
-			}
-
-			for (String fileUrl : fileUrls) {
-				HistoryUrlFeeder huf = new HistoryUrlFeeder(gi);
-				ClientResponse resp = huf
-						.historyUrlFeedRequest(new HistoryUrlFeeder.UrlFileUploadRequest(targetHist.getId(), fileUrl));
-				if (resp.getStatus() >= HttpServletResponse.SC_TEMPORARY_REDIRECT + 3) // "Too many Redirects" or 4xx /
-																						// 5xx error
-					throw new Exception("Remote error - " + resp.toString());
-				final Map<String, Object> responseObjects = resp.getEntity(Map.class);
-				List<Map<String, Object>> outputs = (List<Map<String, Object>>) responseObjects.get("outputs");
-				System.err.println(outputs);
-				for (Map<String, Object> output : outputs)
-					System.err.println(output.get("id"));
-			}
-		} catch (Exception e) {
-			exp = e;
-		} finally {
-			int httpCode;
-			String msg;
-			if (exp == null) {
-				httpCode = HttpServletResponse.SC_ACCEPTED;
-				msg = "sent to history '" + targetHistName + "' on Galaxy instance " + this.galaxyUrl;
-			} else if (exp instanceof GalaxyResponseException) {
-				httpCode = HttpServletResponse.SC_FORBIDDEN;
-				msg = ((GalaxyResponseException) exp).getResponseBody();
-			} else {
-				exp.printStackTrace();
-				httpCode = exp instanceof UnknownHostException
-						|| (exp.getCause() != null && exp.getCause().getClass().equals(UnknownHostException.class))
-								? HttpServletResponse.SC_NOT_FOUND
-								: HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-				msg = exp.getMessage();
 			}
 		}
 	}
@@ -344,60 +225,194 @@ public class Blend4jTest {
 		}
 	}
 
-	public void runWorkflow(String historyName) {
-		final GalaxyInstance instance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey, true);
-		final WorkflowsClient workflowsClient = instance.getWorkflowsClient();
-		final HistoriesClient historyClient = instance.getHistoriesClient();
-		History matchingHistory = null;
-		for (final History history : historyClient.getHistories()) {
-			if (history.getName().equals(historyName)) {
-				matchingHistory = history;
+	public List<String> uploadDatasetsWorkflow(String historyId, List<String> datasetsUrls) {
+		GalaxyInstance instance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey);
+		HistoriesClient hc = instance.getHistoriesClient();
+		List<String> datasetsIds = new ArrayList<String>();
+		Exception exp = null;
+		try {
+			// Check if historyId exist
+			History matchingHistory = findHistoryById(historyId, hc);
+			if (matchingHistory == null) {
+				throw new IllegalArgumentException("No history found with the id " + historyId);
+			}
+			for (String datasetUrl : datasetsUrls) {
+				HistoryUrlFeeder huf = new HistoryUrlFeeder(instance);
+				ClientResponse resp = huf.historyUrlFeedRequest(
+						new HistoryUrlFeeder.UrlFileUploadRequest(matchingHistory.getId(), datasetUrl));
+				// "Too many Redirects" or 4xx 5xx error
+				if (resp.getStatus() >= HttpServletResponse.SC_TEMPORARY_REDIRECT + 3) {
+					throw new Exception("Remote error - " + resp.toString());
+				}
+				final Map<String, Object> responseObjects = resp.getEntity(Map.class);
+				List<Map<String, Object>> outputs = (List<Map<String, Object>>) responseObjects.get("outputs");
+				for (Map<String, Object> output : outputs) {
+					datasetsIds.add((String) output.get("id"));
+				}
+			}
+		} catch (Exception e) {
+			exp = e;
+		} finally {
+			int httpCode;
+			String msg;
+			if (exp == null) {
+				httpCode = HttpServletResponse.SC_ACCEPTED;
+				msg = "Sent to history '" + historyId + " on Galaxy instance " + this.galaxyUrl;
+			} else if (exp instanceof GalaxyResponseException) {
+				httpCode = HttpServletResponse.SC_FORBIDDEN;
+				msg = ((GalaxyResponseException) exp).getResponseBody();
+			} else {
+				exp.printStackTrace();
+				httpCode = exp instanceof UnknownHostException
+						|| (exp.getCause() != null && exp.getCause().getClass().equals(UnknownHostException.class))
+								? HttpServletResponse.SC_NOT_FOUND
+								: HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+				msg = exp.getMessage();
 			}
 		}
-		String input1Id = null;
-		String input2Id = null;
-		for (final HistoryContents historyDataset : historyClient.showHistoryContents(matchingHistory.getId())) {
-			if (historyDataset.getName().equals("Input1")) {
-				input1Id = historyDataset.getId();
+		return datasetsIds;
+	}
+
+	private Workflow findWorkflowById(String workflowId, WorkflowsClient workflowClient) {
+		for (Workflow w : workflowClient.getWorkflows()) {
+			if (w.getId().equals(workflowId)) {
+				return w;
 			}
-			if (historyDataset.getName().equals("Input2")) {
-				input2Id = historyDataset.getId();
+		}
+		return null;
+	}
+
+	private History findHistoryById(String historyId, HistoriesClient historiesClient) {
+		for (History h : historiesClient.getHistories()) {
+			if (h.getId().equals(historyId)) {
+				return h;
+			}
+		}
+		return null;
+	}
+
+	public void invokeAndMonitorWorkflow(String workflowId, String historyId, List<String> historyDatasetsIds)
+			throws InterruptedException {
+
+		// Initialization
+		final GalaxyInstance instance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey);
+		final WorkflowsClient wc = instance.getWorkflowsClient();
+		final HistoriesClient hc = instance.getHistoriesClient();
+
+		// Check if workflowId exist
+		Workflow matchingWorkflow = findWorkflowById(workflowId, wc);
+		if (matchingWorkflow == null) {
+			throw new IllegalArgumentException("No workflow found with the id " + workflowId);
+		}
+
+		// Check if historyId exist
+		History matchingHistory = findHistoryById(historyId, hc);
+		if (matchingHistory == null) {
+			throw new IllegalArgumentException("No history found with the id " + historyId);
+		}
+
+		// Stock workflow inputs informations
+		WorkflowDetails workflowDetails = wc.showWorkflow(matchingWorkflow.getId());
+
+		// Check if history datasets id exist
+		for (String historyDatasetId : historyDatasetsIds) {
+			boolean idExistsInHistory = false;
+			List<HistoryContents> historyContentsList = hc.showHistoryContents(historyId);
+			for (HistoryContents historyContents : historyContentsList) {
+				if (historyDatasetId.equals(historyContents.getId())) {
+					idExistsInHistory = true;
+					break;
+				}
+			}
+			if (!idExistsInHistory) {
+				throw new IllegalArgumentException(
+						"The dataset with ID " + historyDatasetId + " does not exist in history.");
 			}
 		}
 
-		Workflow matchingWorkflow = null;
-		for (Workflow workflow : workflowsClient.getWorkflows()) {
-			if (workflow.getName().equals("TestWorkflow1")) {
-				matchingWorkflow = workflow;
-			}
-		}
+//		for (int i = 0; i < historyDatasetsMaps.size(); i++) {
+//			Map<String, String> historyDatasetMap = historyDatasetsMaps.get(i);
+//			for (Map.Entry<String, String> entry : historyDatasetMap.entrySet()) {
+//				System.out.println("HistoryDataset KEY: " + entry.getKey());
+//				System.out.println("HistoryDataset VALUE: " + entry.getValue());
+//			}
+//
+//			System.out.println("------------------------");
+//		}
 
-		final WorkflowDetails workflowDetails = workflowsClient.showWorkflow(matchingWorkflow.getId());
-		String workflowInput1Id = null;
-		String workflowInput2Id = null;
-		for (final Map.Entry<String, WorkflowInputDefinition> inputEntry : workflowDetails.getInputs().entrySet()) {
-			final String label = inputEntry.getValue().getLabel();
-			if (label.equals("WorkflowInput1")) {
-				workflowInput1Id = inputEntry.getKey();
-			}
-			if (label.equals("WorkflowInput2")) {
-				workflowInput2Id = inputEntry.getKey();
-			}
+		// Check if there are as many datasets as there are inputs
+		if (workflowDetails.getInputs().size() != historyDatasetsIds.size()) {
+			throw new IllegalArgumentException("There are not as many datasets as there are inputs.");
 		}
 
 		final WorkflowInputs inputs = new WorkflowInputs();
 		inputs.setDestination(new WorkflowInputs.ExistingHistory(matchingHistory.getId()));
 		inputs.setWorkflowId(matchingWorkflow.getId());
-		inputs.setInput(workflowInput1Id,
-				new WorkflowInputs.WorkflowInput(input1Id, WorkflowInputs.InputSourceType.HDA));
-		inputs.setInput(workflowInput2Id,
-				new WorkflowInputs.WorkflowInput(input2Id, WorkflowInputs.InputSourceType.HDA));
-		final WorkflowOutputs output = workflowsClient.runWorkflow(inputs);
-		System.out.println("Running workflow in history " + output.getHistoryId());
-		for (String outputId : output.getOutputIds()) {
-			System.out.println("  Workflow writing to output id " + outputId);
+		int i = 0;
+		for (String workflowInputId : workflowDetails.getInputs().keySet()) {
+			String historyDatasetKey = historyDatasetsIds.get(i++);
+			inputs.setInput(workflowInputId, new WorkflowInput(historyDatasetKey, InputSourceType.HDA));
+		}
+		final WorkflowOutputs wos = wc.runWorkflow(inputs);
+
+		// test show invocation without step details
+		assert wc.showInvocation(/* faux? */matchingWorkflow.getId(), wos.getId(), false) instanceof InvocationBriefs;
+
+		// test show invocation with step details
+//		InvocationDetails invdetails = (InvocationDetails) workflowsClient.showInvocation(matchingWorkflow.getId(),
+//				wos.getId(), true);
+		InvocationDetails invdetails = null;
+		while (invdetails == null || invdetails.getState().equals("new")) {
+			Thread.sleep(2000L);
+			invdetails = (InvocationDetails) wc.showInvocation(matchingWorkflow.getId(), wos.getId(), true);
 		}
 
+		// verify basic info of the invocationDetails
+		assert !invdetails.getId().isEmpty();
+		assert invdetails.getUpdateTime() != null;
+		assert invdetails.getHistoryId().equals(historyId);
+		assert invdetails.getState().equals("scheduled");
+		assert invdetails.getWorkflowId() != null;
+
+		// verify inputs in invocationDetails
+		assert !invdetails.getInputs().get("0").getId().isEmpty();
+		assert invdetails.getInputs().get("0").getSrc().equals("hda");
+
+		// unlike the WorkflowOutputs returned upon workflow invocation, the outputs
+		// returned from showInvocation is usually empty,
+		// because the same info is populated inside each step's outputs instead
+
+		// verify steps in invocationDetails
+		assert invdetails.getSteps().size() == 3;
+		InvocationStepDetails step = invdetails.getSteps().get(2);
+		assert !step.getId().isEmpty();
+		assert step.getUpdateTime() != null;
+		assert !step.getJobId().isEmpty();
+		assert step.getOrderIndex() == 2;
+		assert step.getWorkflowStepLabel() == null; // this particular tool doesn't have a label in the workflow
+		assert step.getState().equals("scheduled");
+
+		// verify jobs details in invocationDetails
+		assert step.getJobs().size() == 1;
+		Job job = step.getJobs().get(0);
+		assert !job.getId().isEmpty();
+		assert !job.getToolId().isEmpty();
+		assert job.getUpdated() != null;
+		// The following to asserts would pass if the test is run in debug mode, but
+		// would fail if run without delay.
+		// This is due to the fact that when Galaxy process workflow invocation
+		// requests, it returns after jobs are queued without waiting for the jobs to
+		// finish.
+//	        assert job.getExitCode() == 0;
+//	        assert job.getState().equals("ok");
+		assert job.getCreated() != null;
+
+		// verify outputs details in invocationDetails
+		assert step.getOutputs().size() == 1;
+		step.getOutputs().forEach((k, v) -> {
+			assert !v.getId().isEmpty();
+			assert v.getSource().equals("hda");
+		});
 	}
 
 	/**
@@ -405,31 +420,28 @@ public class Blend4jTest {
 	 * functions to run specific tasks.
 	 */
 	public static void main(String[] args) {
-		String galaxyUrl = "https://usegalaxy.fr/";
+		String galaxyUrl = "https://usegalaxy.eu/";
 //		String apiKey = "9c48c14919ac595ec255619d1a57b030"; // Guilhem apiKey
-		String apiKey = "917878cd12fa17e82807256c6ce3cb20"; // Dorian apiKey
+		String apiKey = "t8GTkJ0oQtzsETGNWMz1ADO2elVmBy9"; // Dorian apiKey
 //		String userId = "6fbe329a5d08d141";
 //		String historyId = "0480e71a2848c343";
 //		String workflowId = "38a7ddfd0d9c28a5";
 //		String toolID = "toolshed.g2.bx.psu.edu/repos/iuc/rapidnj/rapidnj/2.3.2";
 //		String file1 = "/home/grasset/Documents/rice_alignment.fasta";
 //		String file2 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.map";
-//		String file3 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.fasta";
+		String file3 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.fasta";
 //		String fileUrl = "https://gigwa.southgreen.fr/gigwa/genofilt/tmpOutput/anonymousUser/6a932dee14e86655c773d668a7d2651d/Vanilla__project1__2024-01-26__4153variants__FASTA.fasta";
-//		List<String> fileUrls = Arrays.asList(file1, file2, file3);
-//		List<String> parameters = new ArrayList<>();
-//		parameters.add(pathfasta);
-
+		List<String> fileUrls = Arrays.asList(file3);
 		Blend4jTest galaxyApiClient = new Blend4jTest(galaxyUrl, apiKey);
 		try {
-//			galaxyApiClient.pushFilesToGalaxyHistory(fileUrls);
+			List<String> historyInputsIds = galaxyApiClient.uploadDatasetsWorkflow("9054898dda5a0673", fileUrls);
+//			List<String> historyInputsIds = List.of("4838ba20a6d86765aae7e2b0b6075827");
+			galaxyApiClient.invokeAndMonitorWorkflow("d72664f1b3fc986b", "9054898dda5a0673", historyInputsIds);
 //			galaxyApiClient.listJobs();
-//			galaxyApiClient.runWorkflow("TestHistory1");
 //			galaxyApiClient.listHistory();
-//			galaxyApiClient.runWorkflow("TestHistory1", "TestWorkflow1");
 //			galaxyApiClient.listTools();
 //			galaxyApiClient.listWorkflows();
-//			galaxyApiClient.listDatasetsInHistory();
+//			galaxyApiClient.listDatasetsInHistory("9054898dda5a0673");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
