@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" xmlns="http://logging.apache.org/log4j/2.0/config">
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{dd/MM HH:mm:ss} | %-5p | %-12t |%-60.60C %4L | %m%n%x"/>
+        </Console>
+
+        <!--
+        <RollingFile name="FILE" fileName="${sys:catalina.home}/logs/gigwa.log"
+                     filePattern="${sys:catalina.home}/logs/gigwa-%d{MM-dd-yyyy}-%i.log">
+            <PatternLayout pattern="%d{dd/MM HH:mm:ss} | %-5p | %-12t |%-60.60C %4L | %m%n%x"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="5"/>
+        </RollingFile>
+        -->
+    </Appenders>
+
+    <Loggers>
+        <Logger name="org.springframework" level="WARN"/>
+        <!-- <Logger name="org.springframework.data" level="WARN"/> -->
+        <Logger name="org.springframework.web" level="WARN"/>
+        <Logger name="org.springframework.http" level="WARN"/>
+        <!-- <Logger name="org.springframework.security" level="WARN"/> -->
+        <!-- <Logger name="fr.cirad.mgdb.gigwa.tools" level="WARN"/> -->
+        <!-- <Logger name="fr.cirad.mgdb.gigwa.security" level="WARN"/> -->
+        <Logger name="com.github.jmchilton" level="DEBUG"/>
+        <Logger name="fr.cirad" level="DEBUG"/>
+        <!-- <Logger name="fr.cirad.io.brapi" level="WARN"/> -->
+
+        <Root level="ERROR">
+            <AppenderRef ref="console"/>
+            <!-- <AppenderRef ref="FILE"/> -->
+        </Root>
+    </Loggers>
+</Configuration>

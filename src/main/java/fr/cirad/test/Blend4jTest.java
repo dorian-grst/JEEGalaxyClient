@@ -8,7 +8,8 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.github.jmchilton.blend4j.galaxy.GalaxyInstance;
 import com.github.jmchilton.blend4j.galaxy.GalaxyInstanceFactory;
@@ -59,7 +60,7 @@ public class Blend4jTest {
 	/**
      * The Constant LOG.
      */
-    private static final Logger LOG = Logger.getLogger(Blend4jTest.class);
+    private static final Logger LOG = LogManager.getLogger(Blend4jTest.class);
 
     /**
      * Constructor for Blend4jTest that initializes the Galaxy server URL, API key, and
@@ -244,8 +245,8 @@ public class Blend4jTest {
 	                
 	                // If "format" key not found, add null to result and log a warning
 	                if (!foundFormatKey) {
-	                    result.put(stepId, null);
 	                    LOG.warn("Format not found in stepId " + stepId);
+	                    result.put(stepId, null);
 	                }
 	            }
 	        }
@@ -524,7 +525,7 @@ public class Blend4jTest {
 //			galaxyApiClient.printDatasetsInHistory("9054898dda5a0673");
 //			galaxyApiClient.printTools();
 //			galaxyApiClient.printJobs();
-//			System.out.println(galaxyApiClient.getWorkflowInputFormat("432bd822758f6e18"));
+			System.out.println(galaxyApiClient.getWorkflowInputFormat("432bd822758f6e18"));
 //			System.out.println(galaxyApiClient.getWorkflowCompatibleWithFiles(filesNames));
 //			List<String> historyInputsIds = galaxyApiClient.uploadDatasetsWorkflow("9054898dda5a0673", fileUrls);
 //			galaxyApiClient.invokeAndMonitorWorkflow("d72664f1b3fc986b", "9054898dda5a0673", historyInputsIds);
