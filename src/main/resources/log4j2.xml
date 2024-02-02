@@ -2,7 +2,7 @@
 <Configuration status="WARN" xmlns="http://logging.apache.org/log4j/2.0/config">
     <Appenders>
         <Console name="console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{dd/MM HH:mm:ss} | %-5p | %-12t |%-60.60C %4L | %m%n%x"/>
+            <PatternLayout pattern="%d{dd/MM HH:mm:ss} | %-5p | %-12t |%-60.60C %4L | %m%n"/>
         </Console>
 
         <!--
