@@ -286,6 +286,7 @@ public class Blend4jTest {
 	 * @param historyId      The ID of the history where the datasets will be uploaded.
 	 * @param datasetsUrls   A list of URLs representing the datasets to be uploaded.
 	 * @return A list of dataset IDs in the history after the upload.
+	 * TODO: launch uploads in parallel (check waitForDatasetCompletion())
 	 */
 	public List<String> uploadDatasetsWorkflow(String historyId, List<String> datasetsUrls) {
 		HistoriesClient hc = this.galaxyInstance.getHistoriesClient();
@@ -298,8 +299,7 @@ public class Blend4jTest {
 			}
 			for (String datasetUrl : datasetsUrls) {
 				HistoryUrlFeeder huf = new HistoryUrlFeeder(this.galaxyInstance);
-				ClientResponse resp = huf.historyUrlFeedRequest(
-						new HistoryUrlFeeder.UrlFileUploadRequest(matchingHistory.getId(), datasetUrl));
+				ClientResponse resp = huf.historyUrlFeedRequest(new HistoryUrlFeeder.UrlFileUploadRequest(matchingHistory.getId(), datasetUrl));
 				// "Too many Redirects" or 4xx 5xx error
 				if (resp.getStatus() >= HttpServletResponse.SC_TEMPORARY_REDIRECT + 3) {
 					throw new Exception("Remote error - " + resp.toString());
@@ -307,7 +307,9 @@ public class Blend4jTest {
 				final Map<String, Object> responseObjects = resp.getEntity(Map.class);
 				List<Map<String, Object>> outputs = (List<Map<String, Object>>) responseObjects.get("outputs");
 				for (Map<String, Object> output : outputs) {
-					datasetsIds.add((String) output.get("id"));
+					String datasetId = (String) output.get("id");
+					datasetsIds.add(datasetId);
+					waitForDatasetCompletion(datasetId, historyId);
 				}
 			}
 		} catch (Exception e) {
@@ -332,7 +334,7 @@ public class Blend4jTest {
 		}
 		return datasetsIds;
 	}
-
+	
 	/**
 	 * Invokes a workflow, monitors its progress, and handles datasets in the associated history.
 	 *
@@ -437,6 +439,37 @@ public class Blend4jTest {
 			assert v.getSource().equals("hda");
 		});
 	}
+	
+	public String getDatasetState(String historyId, String datasetId) {
+		HistoriesClient hcl = this.galaxyInstance.getHistoriesClient();
+		Dataset d = hcl.showDataset(historyId, datasetId);
+		return d.getState();
+	}
+	
+	/**
+	 * Waits for the completion of a dataset upload by repeatedly checking its state.
+	 *
+	 * @param inputId   The ID of the input dataset.
+	 * @param historyId The ID of the history containing the dataset.
+	 * TODO: launch uploads in parallel (check uploadDatasetsWorkflow())
+	 */
+	private void waitForDatasetCompletion(String inputId, String historyId) {
+	    String state = "";
+	    while (!"ok".equals(state)) {
+	        state = getDatasetState(historyId, inputId);
+	        if ("ok".equals(state)) {
+	            LOG.info("State for input " + inputId + " is now: " + state + ". Uploaded !");
+	        } else {
+	        	LOG.info("State for input " + inputId + " is: " + state + ". Waiting 5 seconds before checking again.");
+	            try {
+	                Thread.sleep(5000); // Pause de 5 secondes
+	            } catch (InterruptedException e) {
+	                Thread.currentThread().interrupt();
+	            }
+	        }
+	    }
+	}
+
 
 	/**
 	 * Checks if a workflow is compatible with the provided files based on input formats.
@@ -512,7 +545,7 @@ public class Blend4jTest {
 //		String file2 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.map";
 //		String file3 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.fasta";
 //		String fileUrl = "https://gigwa.southgreen.fr/gigwa/genofilt/tmpOutput/anonymousUser/6a932dee14e86655c773d668a7d2651d/Vanilla__project1__2024-01-26__4153variants__FASTA.fasta";
-//		List<String> fileUrls = Arrays.asList(file1, file2, file3);
+//		List<String> fileUrls = Arrays.asList(file1, file3);
 		
 //		Map<String, String> filesNames = new HashMap<String, String>();
 //		filesNames.put("/home/bonsoir", "fasta.gz");
@@ -525,7 +558,7 @@ public class Blend4jTest {
 //			galaxyApiClient.printDatasetsInHistory("9054898dda5a0673");
 //			galaxyApiClient.printTools();
 //			galaxyApiClient.printJobs();
-			System.out.println(galaxyApiClient.getWorkflowInputFormat("432bd822758f6e18"));
+//			System.out.println(galaxyApiClient.getWorkflowInputFormat("432bd822758f6e18"));
 //			System.out.println(galaxyApiClient.getWorkflowCompatibleWithFiles(filesNames));
 //			List<String> historyInputsIds = galaxyApiClient.uploadDatasetsWorkflow("9054898dda5a0673", fileUrls);
 //			galaxyApiClient.invokeAndMonitorWorkflow("d72664f1b3fc986b", "9054898dda5a0673", historyInputsIds);
