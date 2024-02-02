@@ -453,14 +453,14 @@ public class Blend4jTest {
 	 * @param historyId The ID of the history containing the dataset.
 	 * TODO: launch uploads in parallel (check uploadDatasetsWorkflow())
 	 */
-	private void waitForDatasetCompletion(String inputId, String historyId) {
+	private void waitForDatasetCompletion(String datasetId, String historyId) {
 	    String state = "";
 	    while (!"ok".equals(state)) {
-	        state = getDatasetState(historyId, inputId);
+	        state = getDatasetState(historyId, datasetId);
 	        if ("ok".equals(state)) {
-	            LOG.info("State for input " + inputId + " is now: " + state + ". Uploaded !");
+	            LOG.info("State for input " + datasetId + " is now: " + state + ". Uploaded !");
 	        } else {
-	        	LOG.info("State for input " + inputId + " is: " + state + ". Waiting 5 seconds before checking again.");
+	        	LOG.info("State for input " + datasetId + " is: " + state + ". Waiting 5 seconds before checking again.");
 	            try {
 	                Thread.sleep(5000); // Pause de 5 secondes
 	            } catch (InterruptedException e) {
