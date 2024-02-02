@@ -242,7 +242,6 @@ public class Blend4jTest {
 	                        break;
 	                    }
 	                }
-	                
 	                // If "format" key not found, add null to result and log a warning
 	                if (!foundFormatKey) {
 	                    LOG.warn("Format not found in stepId " + stepId);
@@ -462,13 +461,15 @@ public class Blend4jTest {
 	        } else {
 	        	LOG.info("State for input " + datasetId + " is: " + state + ". Waiting 5 seconds before checking again.");
 	            try {
-	                Thread.sleep(5000); // Pause de 5 secondes
+	                Thread.sleep(5000);
 	            } catch (InterruptedException e) {
 	                Thread.currentThread().interrupt();
 	            }
 	        }
 	    }
 	}
+	
+	/* TODO: waitForInvocation function which will display the progress of a workflow */
 
 
 	/**
