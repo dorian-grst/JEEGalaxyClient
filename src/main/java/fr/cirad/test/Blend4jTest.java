@@ -2,6 +2,7 @@ package fr.cirad.test;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,12 +69,13 @@ public class Blend4jTest {
      *
      * @param galaxyUrl The base URL of the Galaxy server.
      * @param apiKey    The API key for authentication with the Galaxy server.
+     * @param fDebug	Whether or not do dump payloads in the console
      */
-    public Blend4jTest(String galaxyUrl, String apiKey) {
+    public Blend4jTest(String galaxyUrl, String apiKey, boolean fDebug) {
         this.galaxyUrl = galaxyUrl;
         this.apiKey = apiKey;
         // Create an instance of GalaxyInstance for the connection to the Galaxy server.
-        this.galaxyInstance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey, false);
+        this.galaxyInstance = GalaxyInstanceFactory.get(this.galaxyUrl, this.apiKey, fDebug);
     }
 
 
@@ -107,7 +109,7 @@ public class Blend4jTest {
 	 */
 	public void printWorkflows()  throws Exception {
 		WorkflowsClient wc = this.galaxyInstance.getWorkflowsClient();
-		System.out.println("Jobs list :");
+		System.out.println("Workflow list :");
 		List<Workflow> ws = wc.getWorkflows();
 		for (Workflow w : ws) {
 			System.out.println("  - Workflow ID: "  + w.getId());
@@ -122,7 +124,7 @@ public class Blend4jTest {
 	 */
 	public void printHistories() throws Exception {
 		HistoriesClient hc = this.galaxyInstance.getHistoriesClient();
-		System.out.println("Histories list :");
+		System.out.println("History list :");
 		for (History h : hc.getHistories()) {
 			System.out.println("  - History ID: "  + h.getId());
 			System.out.println("    History Name: " + h.getName());
@@ -181,9 +183,9 @@ public class Blend4jTest {
 	/**
 	 * Prints information about the jobs in the Galaxy instance.
 	 */
-	public void printJobs() {
+	public void printJobs(String historyId) {
         JobsClient jc = this.galaxyInstance.getJobsClient();
-		List<Job> js = jc.getJobs();
+		List<Job> js = historyId == null ? jc.getJobs() : jc.getJobsForHistory(historyId);
 		System.out.println("List of jobs");
 		for (Job j : js) {
 			System.out.println("  - Job ID: " + j.getId());
@@ -199,7 +201,7 @@ public class Blend4jTest {
 	 * @return              A Map containing stepId and corresponding list of input formats.
 	 * @throws 				IllegalArgumentException if the specified workflowId is not found.
 	 */
-	public Map<String, List<String>> getWorkflowInputFormat(String workflowId) {	    
+	public Map<String, List<String>> getWorkflowInputFormats(String workflowId) {	    
 	    // Get the WorkflowsClient from the GalaxyInstance
 	    final WorkflowsClient wc = this.galaxyInstance.getWorkflowsClient();
 
@@ -249,6 +251,70 @@ public class Blend4jTest {
 	                }
 	            }
 	        }
+	        else
+	        	System.err.println(stepDefinition.getToolInputs());
+	    }
+	    return result;
+	}
+	
+	/**
+	 * Retrieves the input parameters for each step in a workflow.
+	 *
+	 * @param workflowId    The ID of the workflow to get input formats from.
+	 * @return              A Map containing stepId and corresponding list of input formats.
+	 * @throws 				IllegalArgumentException if the specified workflowId is not found.
+	 */
+	public Map<String, Map<String, String>> getWorkflowInputParams(String workflowId) {	    
+	    // Get the WorkflowsClient from the GalaxyInstance
+	    final WorkflowsClient wc = this.galaxyInstance.getWorkflowsClient();
+
+	    // Check if the workflowId exists
+	    Workflow matchingWorkflow = findWorkflowById(workflowId, wc);
+	    if (matchingWorkflow == null) {
+	        throw new IllegalArgumentException("No workflow found with the id " + workflowId);
+	    }
+
+	    // Store workflow inputs information
+	    WorkflowDetails wd = wc.showWorkflow(matchingWorkflow.getId());
+
+	    // Create a Map to store stepId and toolInputValue pairs
+	    Map<String, Map<String, String>> result = new HashMap<>();
+
+	    // Iterate through each step in the workflow
+	    for (Map.Entry<String, WorkflowStepDefinition> stepEntry : wd.getSteps().entrySet()) {
+	        String stepId = stepEntry.getKey();
+	        WorkflowStepDefinition stepDefinition = stepEntry.getValue();
+
+	        // Retrieve information about the step
+	        Map<String, WorkflowStepDefinition.WorkflowStepOutput> inputSteps = stepDefinition.getInputSteps();
+	        String stepType = stepDefinition.getType();
+
+	        // Check if the step type is "parameter_input"
+	        if ("parameter_input".equals(stepType)) {
+	            Map<String, Object> stepToolInputs = stepDefinition.getToolInputs();
+	            if (stepToolInputs != null) {
+	                boolean foundParamTypeKey = false;
+	                
+	                // Iterate through each tool input entry
+	                for (Map.Entry<String, Object> toolInputEntry : stepToolInputs.entrySet()) {
+	                    String toolInputKey = toolInputEntry.getKey();
+	                    
+	                    // Check if the tool input key is "parameter_type"
+	                    if ("parameter_type".equals(toolInputKey)) {
+	                        result.put(stepId, new HashMap<>() {{ put(wd.getInputs().get(stepId).getLabel(), (String) toolInputEntry.getValue()); }});
+	                        foundParamTypeKey = true;
+	                        break;
+	                    }
+	                }
+	                // If "parameter_type" key not found, add null to result and log a warning
+	                if (!foundParamTypeKey) {
+	                    LOG.warn("Param type not found in stepId " + stepId);
+	                    result.put(stepId, null);
+	                }
+	            }
+	        }
+	        else
+	        	System.err.println(stepDefinition.getToolInputs());
 	    }
 	    return result;
 	}
@@ -256,10 +322,10 @@ public class Blend4jTest {
 	/**
 	 * Finds workflows compatible with the provided files based on input formats.
 	 *
-	 * @param filesNames	A Map representing file paths and their corresponding formats.
+	 * @param inputFiles	A Map representing file paths and their corresponding formats.
 	 * @return 				A List of workflow IDs that are compatible with the given files.
 	 */
-	public List<String> getWorkflowCompatibleWithFiles(Map<String, String> filesNames) {
+	public List<String> getWorkflowCompatibleWithFiles(Map<String, String> inputFiles) {
 	    final WorkflowsClient wc = this.galaxyInstance.getWorkflowsClient();
 	    // Initialize a list to store compatible workflow IDs
 	    List<String> compatibleWorkflows = new ArrayList<String>();
@@ -268,9 +334,9 @@ public class Blend4jTest {
 	        // Get the ID of the current workflow
 	        String workflowId = workflow.getId();
 	        // Get the input formats expected by the workflow
-	        Map<String, List<String>> workflowFormats = getWorkflowInputFormat(workflowId);
+	        Map<String, List<String>> workflowFormats = getWorkflowInputFormats(workflowId);
 	        // Check if the workflow is compatible with the provided files
-	        if (isWorkflowCompatible(workflowFormats, filesNames)) {
+	        if (isWorkflowCompatible(workflowFormats, inputFiles)) {
 	            // Add the workflow ID to the list of compatible workflows
 	            compatibleWorkflows.add(workflowId);
 	        }
@@ -285,9 +351,9 @@ public class Blend4jTest {
 	 * @param historyId      The ID of the history where the datasets will be uploaded.
 	 * @param datasetsUrls   A list of URLs representing the datasets to be uploaded.
 	 * @return A list of dataset IDs in the history after the upload.
-	 * TODO: launch uploads in parallel (check waitForDatasetCompletion())
+	 * TODO: launch uploads in parallel (check waitForDatasetUploadCompletion())
 	 */
-	public List<String> uploadDatasetsWorkflow(String historyId, List<String> datasetsUrls) {
+	public List<String> uploadDatasetsToHistory(String historyId, List<String> datasetsUrls) {
 		HistoriesClient hc = this.galaxyInstance.getHistoriesClient();
 		List<String> datasetsIds = new ArrayList<String>();
 		Exception exp = null;
@@ -308,7 +374,7 @@ public class Blend4jTest {
 				for (Map<String, Object> output : outputs) {
 					String datasetId = (String) output.get("id");
 					datasetsIds.add(datasetId);
-					waitForDatasetCompletion(datasetId, historyId);
+					waitForDatasetUploadCompletion(datasetId, historyId);
 				}
 			}
 		} catch (Exception e) {
@@ -369,13 +435,12 @@ public class Blend4jTest {
 				}
 			}
 			if (!idExistsInHistory) {
-				throw new IllegalArgumentException(
-						"The dataset with ID " + historyDatasetId + " does not exist in history.");
+				throw new IllegalArgumentException("The dataset with ID " + historyDatasetId + " does not exist in history.");
 			}
 		}
 		// Check if there are as many datasets as there are inputs
 		if (workflowDetails.getInputs().size() != historyDatasetsIds.size()) {
-			throw new IllegalArgumentException("There are not as many datasets as there are inputs.");
+			throw new IllegalArgumentException("There are not as many datasets (" + historyDatasetsIds.size() + ") as there are inputs (" + workflowDetails.getInputs().size() + ").");
 		}
 		final WorkflowInputs inputs = new WorkflowInputs();
 		inputs.setDestination(new WorkflowInputs.ExistingHistory(matchingHistory.getId()));
@@ -452,7 +517,7 @@ public class Blend4jTest {
 	 * @param historyId The ID of the history containing the dataset.
 	 * TODO: launch uploads in parallel (check uploadDatasetsWorkflow())
 	 */
-	private void waitForDatasetCompletion(String datasetId, String historyId) {
+	private void waitForDatasetUploadCompletion(String datasetId, String historyId) {
 	    String state = "";
 	    while (!"ok".equals(state)) {
 	        state = getDatasetState(historyId, datasetId);
@@ -476,23 +541,23 @@ public class Blend4jTest {
 	 * Checks if a workflow is compatible with the provided files based on input formats.
 	 *
 	 * @param workflowInputsFormats		A Map representing workflow input IDs and the corresponding formats they expect.
-	 * @param filesNames           		A Map representing file paths and their corresponding formats.
+	 * @param inputFiles           		A Map representing file paths and their corresponding formats.
 	 * @return 							True if the workflow is compatible, false otherwise.
 	 */
-	private boolean isWorkflowCompatible(Map<String, List<String>> workflowInputsFormats, Map<String, String> filesNames) {
+	private boolean isWorkflowCompatible(Map<String, List<String>> workflowInputsFormats, Map<String, String> inputFiles) {
 	    // Iterate through each entry in the workflowInputsFormats Map
 	    for (Map.Entry<String, List<String>> entry : workflowInputsFormats.entrySet()) {
 	        // Get the expected formats for the current workflow input
 	        List<String> expectedFormats = entry.getValue();
 	        // Check if at least one file has a matching format for the current input
-	        boolean hasMatchingFormat = filesNames.values().stream().anyMatch(expectedFormats::contains);
+	        boolean hasMatchingFormat = inputFiles.values().stream().anyMatch(expectedFormats::contains);
 	        // If no matching format is found, the workflow is not compatible
 	        if (!hasMatchingFormat) {
 	            return false;
 	        }
 	    }
 	    // Check if at least one file has a format compatible with any of the workflow inputs
-	    return filesNames.values().stream().anyMatch(format ->
+	    return inputFiles.values().stream().anyMatch(format ->
 	            workflowInputsFormats.values().stream().anyMatch(list -> list.contains(format)));
 	}
 
@@ -538,34 +603,43 @@ public class Blend4jTest {
 	 */
 	public static void main(String[] args) {
 		String galaxyUrl = "https://usegalaxy.eu/";
-//		String apiKey = "9c48c14919ac595ec255619d1a57b030"; // Guilhem apiKey
+//		String apiKey = "c5f8040ae2f7dd8bc648c583eb2d84ad"; // Guilhem apiKey
 		String apiKey = "t8GTkJ0oQtzsETGNWMz1ADO2elVmBy9"; // Dorian apiKey
-		Blend4jTest galaxyApiClient = new Blend4jTest(galaxyUrl, apiKey);
+		Blend4jTest galaxyApiClient = new Blend4jTest(galaxyUrl, apiKey, false);
 
-//		String file1 = "/home/grasset/Documents/rice_alignment.fasta";
-//		String file2 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.map";
-//		String file3 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.fasta";
-//		String fileUrl = "https://gigwa.southgreen.fr/gigwa/genofilt/tmpOutput/anonymousUser/6a932dee14e86655c773d668a7d2651d/Vanilla__project1__2024-01-26__4153variants__FASTA.fasta";
-//		List<String> fileUrls = Arrays.asList(file1, file3);
-		
-//		Map<String, String> filesNames = new HashMap<String, String>();
-//		filesNames.put("/home/bonsoir", "fasta.gz");
-//		filesNames.put("/home/bonsoir1", "fasta");
-//		filesNames.put("/home/bonsoir2", "tsv");
-
-		try {
-//			galaxyApiClient.printWorkflows();
+		try {			
 //			galaxyApiClient.printHistories();
-//			galaxyApiClient.printDatasetsInHistory("9054898dda5a0673");
+			
+//			galaxyApiClient.printDatasetsInHistory("298965c9277c7f29");
+			
 //			galaxyApiClient.printTools();
-//			galaxyApiClient.printJobs();
-//			System.out.println(galaxyApiClient.getWorkflowInputFormat("432bd822758f6e18"));
-//			System.out.println(galaxyApiClient.getWorkflowCompatibleWithFiles(filesNames));
-//			List<String> historyInputsIds = galaxyApiClient.uploadDatasetsWorkflow("9054898dda5a0673", fileUrls);
-//			galaxyApiClient.invokeAndMonitorWorkflow("d72664f1b3fc986b", "9054898dda5a0673", historyInputsIds);
+			
+//			galaxyApiClient.printJobs(null /*"d693af9d6752817f"*/);	// historyId is optional
+			
+//			galaxyApiClient.printWorkflows();
+//			System.out.println("\nWorkflow required inputs: " + galaxyApiClient.getWorkflowInputFormats("01bc40e50025d602"));
+//			System.out.println("\nWorkflow required params: " + galaxyApiClient.getWorkflowInputParams("01bc40e50025d602"));
+//			Map<String, String> inputFiles = new HashMap<String, String>();
+//			inputFiles.put("/home/bonsoir", "fasta.gz");
+//			inputFiles.put("/home/bonsoir1", "fasta");
+//			inputFiles.put("/home/bonsoir2", "tsv");
+//			System.out.println("\nWorkflows compatible with " + inputFiles + ": " + galaxyApiClient.getWorkflowCompatibleWithFiles(inputFiles));
+			
+//			String file1 = "/home/grasset/Documents/rice_alignment.fasta";
+//			String file2 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.map";
+//			String file3 = "/home/grasset/Documents/Vanilla__4153variants__126individuals.fasta";
+//			String fileUrl = "https://gigwa.southgreen.fr/gigwa/genofilt/tmpOutput/anonymousUser/6a932dee14e86655c773d668a7d2651d/Vanilla__project1__2024-01-26__4153variants__FASTA.fasta";
+//			List<String> dorianFiles = Arrays.asList(file1, file3);			
+//			List<String> guilhemFiles = Arrays.asList(/*"/home/sempere/Bureau/Vanilla__126individuals_metadata.tsv", */"https://gigwa-dev.southgreen.fr/gigwaV2/genofilt/tmpOutput/anonymousUser/961c02c412d97416e51a7d00748aea30/Vanilla__project1__2024-02-12__8922variants__FASTA.fasta");
+//			List<String> historyInputIds = galaxyApiClient.uploadDatasetsToHistory("204843ee236d4718", guilhemFiles);
+////
+//			galaxyApiClient.invokeAndMonitorWorkflow("a7ee8ca76bcec2fd", "204843ee236d4718", historyInputIds /*Arrays.asList("4838ba20a6d86765daa8e37cc0f0d464")*/);
+			
+			
+//			final WorkflowsClient wc = galaxyApiClient.galaxyInstance.getWorkflowsClient();
+//			wc.exportWorkflow("01bc40e50025d602");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-
 }
