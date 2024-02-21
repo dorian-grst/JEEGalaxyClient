@@ -604,7 +604,8 @@ public class Blend4jTest {
 	public static void main(String[] args) {
 		String galaxyUrl = "https://usegalaxy.eu/";
 //		String apiKey = "c5f8040ae2f7dd8bc648c583eb2d84ad"; // Guilhem apiKey
-		String apiKey = "t8GTkJ0oQtzsETGNWMz1ADO2elVmBy9"; // Dorian apiKey
+//		String apiKey = "t8GTkJ0oQtzsETGNWMz1ADO2elVmBy9"; // Dorian apiKey
+		String apiKey = "6c0a61d8cea18f6c8a8bba72f6e8de51"; // Yuwen apiKey
 		Blend4jTest galaxyApiClient = new Blend4jTest(galaxyUrl, apiKey, false);
 
 		try {			
