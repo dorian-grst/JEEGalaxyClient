@@ -6,7 +6,9 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -17,8 +19,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
+
+import com.github.jmchilton.blend4j.galaxy.beans.History;
+import com.github.jmchilton.blend4j.galaxy.beans.HistoryContents;
+import com.github.jmchilton.blend4j.galaxy.beans.Workflow;
+
+import fr.cirad.test.Blend4jTest;
 
 @Controller
 public class GalaxyClientController {
@@ -26,6 +35,12 @@ public class GalaxyClientController {
 	private static final Logger LOG = LogManager.getLogger(GalaxyClientController.class);
 
 	static final public String mainPageURL = "/index.do";
+	static final public String historiesURL = "/histories.do";
+	static final public String datasetsURL = "/datasets.do";
+	static final public String workflowAvailableURL = "/workflowAvailable.do";
+	static final public String uploadURL = "/upload.do";
+	static final public String uploadedURL = "/uploaded.do";
+	static final public String invokedURL = "/invoked.do";
 	static final public String testURL = "/test.json";
 
 	@GetMapping(mainPageURL)
@@ -33,6 +48,104 @@ public class GalaxyClientController {
 	{
 		ModelAndView mav = new ModelAndView();
 		mav.addObject("toto", "hello");
+		return mav;
+	}
+
+	@GetMapping(historiesURL)
+	protected ModelAndView historiesPage(@RequestParam("galaxyUrl") String galaxyUrl, @RequestParam("apiKey") String apiKey, HttpSession session) {
+	    ModelAndView mav = new ModelAndView();
+	    Blend4jTest blend4jTest = new Blend4jTest(galaxyUrl, apiKey, false);
+	    try {
+	        if (blend4jTest.userExist() != "") {
+	            List<History> histories = blend4jTest.getHistoriesList();
+	            mav.setViewName("histories");
+	            mav.addObject("histories", histories);
+		    	mav.addObject("userName", blend4jTest.userExist());
+		    	session.setAttribute("blend4jTest", blend4jTest);
+	        } else {
+	            mav.setViewName("index");
+	            mav.addObject("error", "Wrong API key or URL.");
+	        }
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        mav.setViewName("histories");
+	        mav.addObject("error", "An error occurred while retrieving histories.");
+	    }
+	    return mav;
+	}
+
+	@GetMapping(datasetsURL)
+	protected ModelAndView datasetsPage(@RequestParam("historyId") String historyId, HttpSession session) {
+	    ModelAndView mav = new ModelAndView();
+	    Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
+	    try {
+	        List<HistoryContents> datasets = blend4jTest.getNonDeletedDatasetsList(historyId);
+	        mav.setViewName("datasets");
+	        mav.addObject("datasets", datasets);
+	        mav.addObject("historyId", historyId);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        mav.setViewName("index");
+	        mav.addObject("error", "An error occurred while retrieving datasets.");
+	    }
+	    return mav;
+	}
+	
+	@GetMapping(uploadURL)
+	protected ModelAndView uploadPage(@RequestParam("historyId") String historyId, HttpSession session) {
+		Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
+	    ModelAndView mav = new ModelAndView("upload");
+	    mav.addObject("historyId", historyId);
+	    return mav;
+	}
+	
+	@GetMapping(uploadedURL)
+	public ModelAndView uploadedPage(@RequestParam("historyId") String historyId, @RequestParam("fileList") List<String> fileList, HttpSession session) throws Exception {
+		Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
+	    ModelAndView mav = new ModelAndView("uploaded");
+	    mav.addObject("historyId", historyId);
+	    mav.addObject("fileList", fileList);
+	    blend4jTest.uploadDatasetsToHistory(historyId, fileList);
+	    return mav;
+	}
+
+	
+	@GetMapping(workflowAvailableURL)
+	protected ModelAndView workflowAvailablePage(@RequestParam("historyId") String historyId, @RequestParam("selectedDatasetIds") List<String> selectedDatasetIds,  HttpSession session) {
+		Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
+	    ModelAndView mav = new ModelAndView();
+	    mav.setViewName("workflowAvailable");
+
+	    try {
+	        List<HistoryContents> datasets = blend4jTest.getNonDeletedDatasetsList(historyId);
+	        List<HistoryContents> selectedDatasets = datasets.stream()
+	                .filter(dataset -> selectedDatasetIds.contains(dataset.getId()))
+	                .collect(Collectors.toList());
+	        Map<String, String> fileExtensions = blend4jTest.parseExtension(selectedDatasets);
+	        List<Workflow> compatibleWorkflows = blend4jTest.getWorkflowCompatibleWithFiles(fileExtensions);
+	        mav.addObject("historyId", historyId);
+	        mav.addObject("selectedDatasetsIds", selectedDatasetIds);
+	        mav.addObject("selectedDatasets", selectedDatasets);
+	        mav.addObject("compatibleWorkflows", compatibleWorkflows);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        mav.setViewName("index");
+	        mav.addObject("error", "An error occurred while processing datasets.");
+	    }
+
+	    return mav;
+	}
+
+	@GetMapping(invokedURL)
+	protected ModelAndView invokedPage(@RequestParam("historyId") String historyId, @RequestParam("selectedWorkflow") String selectedWorkflow, @RequestParam("selectedDatasetsIds") List<String> selectedDatasetsIds, HttpSession session) {
+		Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
+		ModelAndView mav = new ModelAndView();
+		mav.setViewName("invoked");
+		try {
+	        blend4jTest.invokeAndMonitorWorkflow(selectedWorkflow, historyId, selectedDatasetsIds);
+	    } catch (InterruptedException e) {
+	        e.printStackTrace();
+	    }
 		return mav;
 	}
 
