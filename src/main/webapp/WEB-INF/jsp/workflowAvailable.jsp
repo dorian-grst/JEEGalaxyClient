@@ -8,11 +8,11 @@
     <script>
     function prepareNextPage() {
         document.querySelector('.loader-container').style.display = 'flex';
-        var selectedWorkflow = document.querySelector('input[name="selectedWorkflow"]:checked');
+        const selectedWorkflow = document.querySelector('input[name="selectedWorkflow"]:checked');
         if (selectedWorkflow) {
-            var selectedWorkflowId = selectedWorkflow.value;
-            var historyId = "${historyId}";
-            var form = document.getElementById("workflowForm");
+            const selectedWorkflowId = selectedWorkflow.value;
+            const historyId = "${historyId}";
+            const form = document.getElementById("workflowForm");
             form.historyId.value = historyId;
             form.selectedWorkflowId.value = selectedWorkflowId;
             form.submit();
