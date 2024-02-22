@@ -102,9 +102,9 @@ public class Blend4jTest {
         return nonDeletedDatasets;
     }
 
-	public void printInvocationDetails(String invocationId) {
+	public void printInvocationDetails(String workflowId, String invocationId) {
 		WorkflowsClient wc = this.galaxyInstance.getWorkflowsClient();
-		InvocationDetails invdetails = (InvocationDetails) wc.showInvocation("d72664f1b3fc986b", invocationId, true);
+		InvocationDetails invdetails = (InvocationDetails) wc.showInvocation(workflowId, invocationId, true);
 		System.out.println("Invocation details :");
 		System.out.println("  - Invocation ID: " + invdetails.getId());
 		System.out.println("    Invocation State: " + invdetails.getState());
@@ -605,9 +605,31 @@ public class Blend4jTest {
 	        }
 	    }
 	}
+	public void waitForInvocationCompletion(String workflowId, String invocationId) {
+		WorkflowsClient wc = this.galaxyInstance.getWorkflowsClient();
+		
+		String state = "";
+		 while (!"ok".equals(state)) {
+			    InvocationDetails invdetails = (InvocationDetails) wc.showInvocation(workflowId, invocationId, true);
+				int numLastStep = invdetails.getSteps().size()-1;
+				int numLastJob = invdetails.getSteps().get(numLastStep).getJobs().size()-1;
+				state = invdetails.getSteps().get(numLastStep).getJobs().get(numLastJob).getState();
+		        if ("ok".equals(state)) {
+		        	LOG.info("State for last job " + invocationId + " is now: " + state + ". Uploaded !");
+		        } else {
+		        	LOG.info("State for last job " + invocationId + " is: " + state + ". Waiting 5 seconds before checking again.");
+		            try {
+		                Thread.sleep(5000);
+		            } catch (InterruptedException e) {
+		                Thread.currentThread().interrupt();
+		            }
+		        }
+		    }
+	}
 	
-	/* TODO: waitForInvocation function which will display the progress of a workflow */
-//	private void waitForWorkflowInvocationCompletion
+	
+	
+
 
 	/**
 	 * Checks if a workflow is compatible with the provided files based on input formats.
@@ -725,8 +747,10 @@ public class Blend4jTest {
 //			List<String> historyInputIds = galaxyApiClient.uploadDatasetsToHistory("9054898dda5a0673", dorianFiles);
 //			List<String> historyInputIdsM = Arrays.asList("4838ba20a6d867659b8b0773cd892dcc");
 //			galaxyApiClient.invokeAndMonitorWorkflow("d72664f1b3fc986b", "9054898dda5a0673", historyInputIdsM /*Arrays.asList("4838ba20a6d86765daa8e37cc0f0d464")*/);
-			String invocationId = galaxyApiClient.invokeAndMonitorWorkflow("0fa2fab3fcc14505", "3d0cf71ba26e7cef", List.of("4838ba20a6d867652e671539bec34ea4"));
+			String invocationId = galaxyApiClient.invokeAndMonitorWorkflow("0fa2fab3fcc14505", "3d0cf71ba26e7cef", List.of("4838ba20a6d8676589606982620e1109"));
 			System.out.println("Invocation ID: " + invocationId);
+			galaxyApiClient.waitForInvocationCompletion("0fa2fab3fcc14505",invocationId);
+//			galaxyApiClient.printInvocationDetails("0fa2fab3fcc14505","be8e16176d2eb32e");
 //			final WorkflowsClient wc = galaxyApiClient.galaxyInstance.getWorkflowsClient();
 //			wc.exportWorkflow("01bc40e50025d602");
 		} catch (Exception e) {

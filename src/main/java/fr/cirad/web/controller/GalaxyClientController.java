@@ -142,7 +142,8 @@ public class GalaxyClientController {
 		ModelAndView mav = new ModelAndView();
 		mav.setViewName("invoked");
 		try {
-	        blend4jTest.invokeAndMonitorWorkflow(selectedWorkflow, historyId, selectedDatasetsIds);
+			String invocationId = blend4jTest.invokeAndMonitorWorkflow(selectedWorkflow, historyId, selectedDatasetsIds);
+			blend4jTest.waitForInvocationCompletion(selectedWorkflow, invocationId);
 	    } catch (InterruptedException e) {
 	        e.printStackTrace();
 	    }
@@ -210,4 +211,5 @@ public class GalaxyClientController {
         }
 		return result;
 	}
+	
 }
