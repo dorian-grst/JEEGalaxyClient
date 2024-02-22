@@ -24,8 +24,10 @@ import com.github.jmchilton.blend4j.galaxy.beans.Dataset;
 import com.github.jmchilton.blend4j.galaxy.beans.History;
 import com.github.jmchilton.blend4j.galaxy.beans.HistoryContents;
 import com.github.jmchilton.blend4j.galaxy.beans.HistoryDetails;
+import com.github.jmchilton.blend4j.galaxy.beans.Invocation;
 import com.github.jmchilton.blend4j.galaxy.beans.InvocationBriefs;
 import com.github.jmchilton.blend4j.galaxy.beans.InvocationDetails;
+import com.github.jmchilton.blend4j.galaxy.beans.InvocationStep;
 import com.github.jmchilton.blend4j.galaxy.beans.InvocationStepDetails;
 import com.github.jmchilton.blend4j.galaxy.beans.Job;
 import com.github.jmchilton.blend4j.galaxy.beans.Tool;
@@ -783,7 +785,10 @@ public class Blend4jTest {
 	    return null; // Return null if the history is not found
 	}
 
-
+//	private void checkStepsStatus(String workflowId, WorkflowsClient workflowsClient) { 
+//		WorkflowDetails workflowDetails = workflowsClient.showWorkflow(workflowId);
+//	}
+	
 	/**
 	 * Main method to execute the Galaxy API client functions. Uncomment the desired
 	 * functions to run specific tasks.
@@ -795,9 +800,10 @@ public class Blend4jTest {
 		String apiKey = "6c0a61d8cea18f6c8a8bba72f6e8de51"; // Yuwen apiKey
 		Blend4jTest galaxyApiClient = new Blend4jTest(galaxyUrl, apiKey, false);
 
-		try {			
+		try {	
+//			System.out.println(galaxyApiClient.getDatasetState("6c52b8d31e65a7cb", "4838ba20a6d867652e671539bec34ea4"));
 //			galaxyApiClient.printHistories();
-			System.out.println(galaxyApiClient.getWorkflowInputParams("4e90e61cd03de188"));
+//			System.out.println(galaxyApiClient.getWorkflowInputParams("4e90e61cd03de188"));
 //			galaxyApiClient.printDatasetsInHistory("298965c9277c7f29");
 			
 //			galaxyApiClient.printTools();
