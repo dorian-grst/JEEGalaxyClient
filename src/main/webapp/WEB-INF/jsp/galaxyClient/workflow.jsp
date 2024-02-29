@@ -4,10 +4,10 @@
 <html>
     <head>
         <title>JEEGalaxyClient</title>
-        <link rel="stylesheet" type="text/css" href="css/styles.css">
+        <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
             function prepareNextPage() {
-                document.querySelector('.loader-container').style.display = 'flex';
+                document.querySelector('#upload').style.display = 'flex';
                 const selectedWorkflow = document.querySelector('input[name="workflowId"]:checked');
                 if (selectedWorkflow) {
                     const workflowId = selectedWorkflow.value;
@@ -22,13 +22,14 @@
             }
 
             function redirectToHistoryPageAndCreateWorkflow(galaxyUrl, apiKey) {
+                document.querySelector('#redirect').style.display = 'flex';
                 window.open("https://usegalaxy.eu/workflows/create", "_blank");
                 window.location.href = "histories.do?galaxyUrl=" + encodeURIComponent(galaxyUrl) + "&apiKey=" + encodeURIComponent(apiKey);
             }
         </script>
     </head>
     <body>
-        <div class="loader-container">
+        <div id="upload" class="loader-container">
             <div class="loader"></div>
             <h3>Uploading files...</h3>
             <div class="text-container">
@@ -36,14 +37,20 @@
                 <a href="https://usegalaxy.eu" target="_blank">here</a>
             </div>
         </div>
+        <div id="redirect" class="loader-container">
+            <div class="loader"></div>
+            <h3>Redirect...</h3>
+        </div>
         <div class="container">
             <h1>Select a workflow before the upload</h1>
             <h2>Selected files :</h2>
-            <ul>
-                <c:forEach var="file" items="${fileList}">
-                    <li>${file}</li>
-                </c:forEach>
-            </ul>
+            <div style="width: 100%;">
+                <ul>
+                    <c:forEach var="file" items="${fileList}">
+                        <li style="word-wrap: break-word">${file}</li>
+                    </c:forEach>
+                </ul>
+            </div>
             <h2>Select a compatible workflow to launch:</h2>
             <form action="invoke.do" method="get">
                 <c:forEach var="workflow" items="${compatibleWorkflows}">

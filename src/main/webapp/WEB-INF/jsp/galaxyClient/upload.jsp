@@ -4,10 +4,22 @@
 <html>
     <head>
         <title>JEEGalaxyClient</title>
-        <link rel="stylesheet" type="text/css" href="css/styles.css">
+        <script type="text/javascript" src="../js/jquery-1.12.4.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
+            $(document).ready(function () {
+                // Récupérer les filesURLs du localStorage
+                const filesURLs = JSON.parse(localStorage.getItem('filesURLs'));
+
+                // Si des filesURLs sont disponibles dans le localStorage
+                if (filesURLs && filesURLs.length > 0) {
+                    // Mettre les filesURLs dans le textarea
+                    const textarea = document.getElementById("filesTextarea");
+                    textarea.value = filesURLs.join("\n");
+                }
+            });
+
             function handleNext() {
-                document.querySelector('.loader-container').style.display = 'flex';
                 const textarea = document.getElementById("filesTextarea");
                 const lines = textarea.value.split(/\r?\n/);
                 const fileList = [];
@@ -18,16 +30,16 @@
                         fileList.push(line);
                     }
                 }
-
                 if (fileList.length > 0) {
+                    document.querySelector('.loader-container').style.display = 'flex';
                     const fileListString = fileList.join(",");
-
                     window.location.href = "workflow.do?historyId=${historyId}&fileList=" + encodeURIComponent(fileListString);
                 } else {
                     alert("Please enter at least one file link.");
                 }
             }
         </script>
+
     </head>
     <body>
         <div class="loader-container">

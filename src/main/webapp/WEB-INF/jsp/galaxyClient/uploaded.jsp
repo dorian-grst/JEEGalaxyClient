@@ -4,7 +4,7 @@
 <html>
     <head>
         <title>JEEGalaxyClient</title>
-        <link rel="stylesheet" type="text/css" href="css/styles.css">
+        <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
             function redirectToDatasetsPage(historyId) {
                 window.location.href = "datasets.do?historyId=" + historyId;

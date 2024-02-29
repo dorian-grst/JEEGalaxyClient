@@ -4,7 +4,7 @@
 <html>
     <head>
         <title>JEEGalaxyClient</title>
-        <link rel="stylesheet" type="text/css" href="css/styles.css">
+        <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
             function prepareNextPage() {
                 const selectedHistory = document.querySelector('input[name="selectedHistory"]:checked');
@@ -18,7 +18,7 @@
         </script>
     </head>
 
-    <body style='background-color:#f0f0f0;'>
+    <body>
         <div class="container">
             <h1>Hello ${userName} ! 👋</h1>
             <h2>Select the history you want to work on :</h2>

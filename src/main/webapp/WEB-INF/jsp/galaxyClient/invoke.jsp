@@ -4,7 +4,7 @@
 <html>
     <head>
         <title>JEEGalaxyClient</title>
-        <link rel="stylesheet" type="text/css" href="css/styles.css">
+        <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
             function redirectToHistoryPage(galaxyUrl, apiKey) {
                 window.location.href = "histories.do?galaxyUrl=" + encodeURIComponent(galaxyUrl) + "&apiKey=" + encodeURIComponent(apiKey);
