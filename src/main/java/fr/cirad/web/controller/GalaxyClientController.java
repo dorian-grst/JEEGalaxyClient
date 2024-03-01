@@ -28,50 +28,57 @@ import fr.cirad.test.Blend4jTest;
 public class GalaxyClientController {
 
     private static final Logger LOG = LogManager.getLogger(GalaxyClientController.class);
-    static final public String ROOT = "/galaxyClient";
-    static final public String MAIN_PAGE_URL = ROOT + "/index.do";
-    static final public String HISTORIES_URL = ROOT + "/histories.do";
-    //    static final public String DATASETS_URL = ROOT + "/datasets.do"
-    static final public String UPLOAD_URL = ROOT + "/upload.do";
-    static final public String WORKFLOW_URL = ROOT + "/workflow.do";
+    static final public String ROOT = "galaxyClient";
+    static final public String MAIN_PAGE_URL = "/index.do";
+    static final public String HISTORIES_URL = "/histories.do";
+    //    static final public String DATASETS_URL = "/datasets.do"
+    static final public String UPLOAD_URL = "/upload.do";
+    static final public String WORKFLOW_URL = "/workflow.do";
 
-    //    static final public String UPLOADED_URL = ROOT + "/uploaded.do";
-    static final public String INVOKE_URL = ROOT + "/invoke.do";
-    static final public String TEST_URL = ROOT + "/test.json";
+    //    static final public String UPLOADED_URL = "/uploaded.do";
+    static final public String INVOKE_URL = "/invoke.do";
+    static final public String TEST_URL = "/test.json";
 
-    @GetMapping(MAIN_PAGE_URL)
-    protected ModelAndView mainPage(@RequestParam("filesURLs") List<String> filesURLs) {
+    @GetMapping("/" + ROOT + MAIN_PAGE_URL)
+    protected ModelAndView mainPage(@RequestParam("filesURLs") List<String> filesURLs, HttpSession session) {
         ModelAndView mav = new ModelAndView();
-        mav.addObject("filesURLs", filesURLs);
-        mav.addObject("toto", "hello");
+        List<String> relativePaths = new ArrayList<>();
+        for (String url : filesURLs) {
+            String relativePath = url.replaceFirst("^https?://[^/]+/", "");
+            relativePaths.add(relativePath);
+        }
+        session.setAttribute("filesURLs", relativePaths);
+//        System.out.println(relativePaths);
+//        mav.addObject("filesURLs", relativePaths);
+//        mav.addObject("toto", "hello");
         return mav;
     }
 
-    @GetMapping(HISTORIES_URL)
+    @GetMapping("/" + ROOT + HISTORIES_URL)
     protected ModelAndView historiesPage(@RequestParam("galaxyUrl") String galaxyUrl, @RequestParam("apiKey") String apiKey, HttpSession session) {
         ModelAndView mav = new ModelAndView();
         Blend4jTest blend4jTest = new Blend4jTest(galaxyUrl, apiKey, false);
         try {
             if (!Objects.equals(blend4jTest.userExist(), "")) {
-                mav.setViewName("galaxyClient/histories");
+                /*mav.setViewName("galaxyClient/histories");*/
                 List<History> histories = blend4jTest.getHistoriesList();
                 mav.addObject("histories", histories);
                 mav.addObject("userName", blend4jTest.userExist());
                 session.setAttribute("blend4jTest", blend4jTest);
             } else {
-                mav.setViewName("galaxyClient/index");
+                /*mav.setViewName("galaxyClient/index");*/
                 LOG.error("Wrong API key or URL.");
                 mav.addObject("error", "Wrong API key or URL.");
             }
         } catch (Exception e) {
-            mav.setViewName("galaxyClient/index");
+            /*mav.setViewName("galaxyClient/index");*/
             LOG.error("An error occurred while retrieving histories.", e);
             mav.addObject("error", "An error occurred while retrieving histories.");
         }
         return mav;
     }
 
-//    @GetMapping(DATASETS_URL)
+//    @GetMapping("/" + ROOT + DATASETS_URL)
 //    protected ModelAndView datasetsPage(@RequestParam("historyId") String historyId, HttpSession session) {
 //        ModelAndView mav = new ModelAndView();
 //        Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
@@ -87,10 +94,12 @@ public class GalaxyClientController {
 //        return mav;
 //    }
 
-    @GetMapping(UPLOAD_URL)
-    protected ModelAndView uploadPage(@RequestParam("historyId") String historyId) {
-        ModelAndView mav = new ModelAndView("galaxyClient/upload");
+    @GetMapping("/" + ROOT + UPLOAD_URL)
+    protected ModelAndView uploadPage(@RequestParam("historyId") String historyId, HttpSession session) {
+        //List<String> filesURLs = (List<String>) session.getAttribute("filesURLs");
+        ModelAndView mav = new ModelAndView(/*"galaxyClient/upload"*/);
         mav.addObject("historyId", historyId);
+        /*mav.addObject("filesURLs", filesURLs);*/
         return mav;
     }
 
@@ -104,12 +113,12 @@ public class GalaxyClientController {
 //        return mav;
 //    }
 
-    @GetMapping(WORKFLOW_URL)
+    @GetMapping("/" + ROOT + WORKFLOW_URL)
     protected ModelAndView workflowPage(@RequestParam("historyId") String historyId, @RequestParam("fileList") List<String> fileList, HttpSession session) throws Exception {
         Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
         ModelAndView mav = new ModelAndView();
         try {
-            mav.setViewName("galaxyClient/workflow");
+            /*mav.setViewName("galaxyClient/workflow");*/
             Map<String, String> fileExtensions = blend4jTest.parseExtension(fileList);
             List<Workflow> compatibleWorkflows = blend4jTest.getWorkflowCompatibleWithFiles(fileExtensions);
             mav.addObject("historyId", historyId);
@@ -118,7 +127,7 @@ public class GalaxyClientController {
             mav.addObject("apiKey", blend4jTest.getApiKey());
             mav.addObject("compatibleWorkflows", compatibleWorkflows);
         } catch (Exception e) {
-            mav.setViewName("galaxyClient/index");
+            mav.setViewName(ROOT + MAIN_PAGE_URL.replace(".do", ""));
             LOG.error("An error occurred while processing datasets.", e);
             mav.addObject("error", "An error occurred while processing datasets.");
         }
@@ -126,11 +135,11 @@ public class GalaxyClientController {
         return mav;
     }
 
-    @GetMapping(INVOKE_URL)
+    @GetMapping("/" + ROOT + INVOKE_URL)
     protected ModelAndView invokePage(@RequestParam("historyId") String historyId, @RequestParam("workflowId") String workflowId, @RequestParam("fileList") List<String> fileList, HttpSession session) throws Exception {
         Blend4jTest blend4jTest = (Blend4jTest) session.getAttribute("blend4jTest");
         ModelAndView mav = new ModelAndView();
-        mav.setViewName("galaxyClient/invoke");
+        mav.setViewName(ROOT + "/invoke");
         blend4jTest.uploadDatasetsToHistory(historyId, fileList);
         mav.addObject("historyId", historyId);
         mav.addObject("workflowId", workflowId);
@@ -139,7 +148,7 @@ public class GalaxyClientController {
         return mav;
     }
 
-    @PostMapping(TEST_URL)
+    @PostMapping("/" + ROOT + TEST_URL)
     protected @ResponseBody Map<String, Object> test(@RequestBody Map<String, Object> body) throws Exception {
         System.out.println(body);
         return body;
