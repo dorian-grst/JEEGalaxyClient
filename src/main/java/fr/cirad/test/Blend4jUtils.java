@@ -35,11 +35,13 @@ import com.github.jmchilton.blend4j.galaxy.beans.WorkflowOutputs;
 import com.github.jmchilton.blend4j.galaxy.beans.WorkflowStepDefinition;
 import com.sun.jersey.api.client.ClientResponse;
 
-public class Blend4jTest {
+import javax.servlet.http.HttpServletResponse;
+
+public class Blend4jUtils {
 
     /**
      * An instance of GalaxyInstance, representing the connection to the Galaxy server.
-     * This instance is created during the initialization of Blend4jTest and can be reused
+     * This instance is created during the initialization of Blend4jUtils and can be reused
      * across multiple methods to avoid redundant GalaxyInstance creation.
      */
     private final GalaxyInstance galaxyInstance;
@@ -47,17 +49,17 @@ public class Blend4jTest {
     /**
      * The Constant LOG.
      */
-    private static final Logger LOG = LogManager.getLogger(Blend4jTest.class);
+    private static final Logger LOG = LogManager.getLogger(Blend4jUtils.class);
 
     /**
-     * Constructor for Blend4jTest that initializes the Galaxy server URL, API key, and
+     * Constructor for Blend4jUtils that initializes the Galaxy server URL, API key, and
      * creates an instance of GalaxyInstance for the connection.
      *
      * @param galaxyUrl The base URL of the Galaxy server.
      * @param apiKey    The API key for authentication with the Galaxy server.
      * @param fDebug    Whether you do dump payloads in the console
      */
-    public Blend4jTest(String galaxyUrl, String apiKey, boolean fDebug) {
+    public Blend4jUtils(String galaxyUrl, String apiKey, boolean fDebug) {
         // Create an instance of GalaxyInstance for the connection to the Galaxy server.
         this.galaxyInstance = GalaxyInstanceFactory.get(galaxyUrl, apiKey, fDebug);
     }
@@ -468,6 +470,10 @@ public class Blend4jTest {
         HistoryUrlFeeder huf = new HistoryUrlFeeder(this.galaxyInstance);
         ClientResponse resp = huf.historyUrlFeedRequest(new HistoryUrlFeeder.UrlFileUploadRequest(historyId, datasetUrl));
         final Map<String, Object> responseObjects = resp.getEntity(Map.class);
+        if (resp.getStatus() > HttpServletResponse.SC_TEMPORARY_REDIRECT) {
+            throw new Exception("Failed to upload dataset: " + datasetUrl + "\nError: " + responseObjects.get("err_msg"));
+        }
+
         List<Map<String, Object>> outputs = (List<Map<String, Object>>) responseObjects.get("outputs");
         for (Map<String, Object> output : outputs) {
             String datasetId = (String) output.get("id");
@@ -653,17 +659,15 @@ public class Blend4jTest {
      * @return True if the workflow is compatible, false otherwise.
      */
     private boolean isWorkflowCompatible(Map<String, List<String>> workflowInputsFormats, Map<String, String> inputFiles) {
-        // Check if the size of the two maps is the same
-        if (workflowInputsFormats.size() != inputFiles.size()) {
-            return false;
-        }
-        // Iterate over each input file format
-        for (String inputFileFormat : inputFiles.values()) {
+        // Initialize a set to store input formats of files
+        Set<String> inputFileFormats = new HashSet<>(inputFiles.values());
+
+        // Iterate over each entry in workflowInputsFormats
+        for (List<String> expectedFormats : workflowInputsFormats.values()) {
             boolean matchFound = false;
-            // Iterate over each entry in workflowInputsFormats
-            for (List<String> expectedFormats : workflowInputsFormats.values()) {
-                // Check if the input file format is present in the list of expected formats
-                if (expectedFormats.contains(inputFileFormat)) {
+            // Check if any of the expected formats matches with any of the input file formats
+            for (String expectedFormat : expectedFormats) {
+                if (inputFileFormats.contains(expectedFormat)) {
                     matchFound = true;
                     break; // Exit the inner loop if a match is found
                 }
@@ -673,10 +677,9 @@ public class Blend4jTest {
                 return false;
             }
         }
-        // If all input file formats are present in the lists of expected formats, return true
+        // If all expected formats have at least one corresponding input file format, return true
         return true;
     }
-
 
     /**
      * Finds a workflow by its ID from the specified WorkflowsClient.
@@ -723,7 +726,7 @@ public class Blend4jTest {
 //		String apiKey = "c5f8040ae2f7dd8bc648c583eb2d84ad"; // Guilhem apiKey
         String apiKey = "t8GTkJ0oQtzsETGNWMz1ADO2elVmBy9"; // Dorian apiKey
 //      String apiKey = "6c0a61d8cea18f6c8a8bba72f6e8de51"; // Yuwen apiKey
-        Blend4jTest galaxyApiClient = new Blend4jTest(galaxyUrl, apiKey, false);
+        Blend4jUtils galaxyApiClient = new Blend4jUtils(galaxyUrl, apiKey, false);
         try {
             System.out.println("Hello " + galaxyApiClient.userExist() + " test your methods here ! ");
 //			System.out.println(galaxyApiClient.getDatasetState("6c52b8d31e65a7cb", "4838ba20a6d867652e671539bec34ea4"));
