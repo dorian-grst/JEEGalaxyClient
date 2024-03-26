@@ -4,23 +4,43 @@
 <html>
     <head>
         <title>JEEGalaxyClient</title>
+        <script type="text/javascript" src="../js/jquery-1.12.4.min.js"></script>
         <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
-            function prepareNextPage() {
-                const selectedHistory = document.querySelector('input[name="selectedHistory"]:checked');
-                if (selectedHistory) {
-                    const historyId = selectedHistory.value;
-                    window.location.href = "upload.do?historyId=" + historyId;
-                } else {
-                    alert("Please select a history before proceeding.");
-                }
-            }
+            $(document).ready(function () {
+                $('#next_upload').click(function () {
+                    const selectedHistory = document.querySelector('input[name="selectedHistory"]:checked');
+                    const galaxyUrl = localStorage.getItem("galaxyUrl");
+                    const apiKey = localStorage.getItem("apiKey");
+                    if (selectedHistory) {
+                        const historyId = selectedHistory.value;
+                        const queryString = window.location.search;
+                        const urlParams = new URLSearchParams(queryString);
+                        const filesURLsValues = urlParams.getAll('filesURLs');
+                        const filesURLsArray = [];
+                        filesURLsValues.forEach(value => {
+                            filesURLsArray.push(encodeURIComponent(value));
+                        });
+                        window.location.href = "upload.do?apiKey=" + apiKey + "&galaxyUrl=" + galaxyUrl + "&historyId=" + historyId + "&filesURLs=" + filesURLsArray.join("&filesURLs=");
+                    } else {
+                        alert("Please select a history before proceeding.");
+                    }
+                });
+                $('#back_upload').click(function () {
+                    history.back();
+                });
+            });
         </script>
     </head>
 
     <body>
         <div class="container">
-            <h1>Hello ${userName} ! 👋</h1>
+            <div style="display: flex; flex-direction: row; gap: 10px; white-space: nowrap;">
+                <h1>Connected to</h1>
+                <h1 style="color: seagreen">${galaxyUrl}</h1>
+                <h1>as</h1>
+                <h1 style="color: seagreen">${userName}</h1>
+            </div>
             <h2>Select the history you want to work on :</h2>
             <c:if test="${not empty histories}">
                 <c:forEach var="history" items="${histories}">
@@ -37,8 +57,8 @@
                 <p class="error">${error}</p>
             </c:if>
             <div class="space-container">
-                <button type="button" class="back" onclick="history.back()">Back</button>
-                <button type="button" class="submit" onclick="prepareNextPage()">Next</button>
+                <button id="back_upload" type="button" class="back">Back</button>
+                <button id="next_upload" type="button" class="submit">Next</button>
             </div>
         </div>
     </body>

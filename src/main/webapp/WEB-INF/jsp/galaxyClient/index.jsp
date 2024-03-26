@@ -7,31 +7,32 @@
         <script type="text/javascript" src="../js/jquery-1.12.4.min.js"></script>
         <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
-            function getLocalStorage() {
+            $(document).ready(function () {
+                function setLocalStorage() {
+                    document.querySelector('.loader-container').style.display = 'flex';
+                    localStorage.setItem("galaxyUrl", $("#galaxyUrl").val());
+                    localStorage.setItem("apiKey", $("#apiKey").val());
+                }
+
                 const galaxyUrl = localStorage.getItem("galaxyUrl");
                 const apiKey = localStorage.getItem("apiKey");
                 if (galaxyUrl) {
                     $("#galaxyUrl").val(galaxyUrl);
                     $("#apiKey").val(apiKey);
                 }
-
-                const queryString = window.location.search;
-                const urlParams = new URLSearchParams(queryString);
-                const filesURLsParam = urlParams.get('filesURLs');
-                if (filesURLsParam) {
-                    const filesURLs = filesURLsParam.split(',');
-                    localStorage.setItem('filesURLs', JSON.stringify(filesURLs));
-                }
-            }
-
-            function setLocalStorage() {
-                document.querySelector('.loader-container').style.display = 'flex';
-                localStorage.setItem("galaxyUrl", $("#galaxyUrl").val());
-                localStorage.setItem("apiKey", $("#apiKey").val());
-            }
-
-            $(document).ready(function () {
-                getLocalStorage();
+                $('#next_histories').click(function () {
+                    setLocalStorage();
+                    const apiKey = encodeURIComponent($("#apiKey").val());
+                    const galaxyUrl = encodeURIComponent($("#galaxyUrl").val());
+                    const queryString = window.location.search;
+                    const urlParams = new URLSearchParams(queryString);
+                    const filesURLsValues = urlParams.getAll('filesURLs');
+                    const filesURLsArray = [];
+                    filesURLsValues.forEach(value => {
+                        filesURLsArray.push(encodeURIComponent(value));
+                    });
+                    window.location.href = "histories.do?apiKey=" + apiKey + "&galaxyUrl=" + galaxyUrl + "&filesURLs=" + filesURLsArray.join("&filesURLs=");
+                });
             });
         </script>
     </head>
@@ -42,7 +43,7 @@
         </div>
         <div class="container">
             <h1>Connect to Galaxy</h1>
-            <form id="galaxyForm" action="histories.do" method="get">
+            <form id="galaxyForm">
                 <label for="galaxyUrl">Galaxy Instance URL:</label>
                 <input type="text" id="galaxyUrl" name="galaxyUrl" placeholder="Enter Galaxy Instance URL" required>
                 <label for="apiKey">API Key:</label>
@@ -51,7 +52,7 @@
                     <p class="error">${error}</p>
                 </c:if>
                 <div class="right-container">
-                    <button type="submit" class="submit" onClick="setLocalStorage()">Submit</button>
+                    <button id="next_histories" type="button" class="submit">Submit</button>
                 </div>
             </form>
         </div>

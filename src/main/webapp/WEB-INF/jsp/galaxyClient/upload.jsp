@@ -8,36 +8,42 @@
         <link rel="stylesheet" type="text/css" href="../css/styles.css">
         <script>
             $(document).ready(function () {
-                // Récupérer les filesURLs du localStorage
-                const filesURLs = JSON.parse(localStorage.getItem('filesURLs'));
-
-                // Si des filesURLs sont disponibles dans le localStorage
-                if (filesURLs && filesURLs.length > 0) {
-                    // Mettre les filesURLs dans le textarea
+                const queryString = window.location.search;
+                const urlParams = new URLSearchParams(queryString);
+                const filesURLsValues = urlParams.getAll('filesURLs');
+                const filesURLsArray = [];
+                filesURLsValues.forEach(value => {
+                    filesURLsArray.push(encodeURIComponent(value));
+                });
+                if (filesURLsValues.length > 0) {
                     const textarea = document.getElementById("filesTextarea");
-                    textarea.value = filesURLs.join("\n");
+                    filesURLsValues.forEach(url => {
+                        textarea.value += url + "\n";
+                    });
                 }
-            });
-
-            function handleNext() {
-                const textarea = document.getElementById("filesTextarea");
-                const lines = textarea.value.split(/\r?\n/);
-                const fileList = [];
-
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (line !== "") {
-                        fileList.push(line);
+                $('#next_workflow').click(function () {
+                    const textarea = document.getElementById("filesTextarea");
+                    const galaxyUrl = localStorage.getItem("galaxyUrl");
+                    const apiKey = localStorage.getItem("apiKey");
+                    const lines = textarea.value.split(/\r?\n/);
+                    const filesURLsTextArea = [];
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (line !== "") {
+                            filesURLsTextArea.push(line);
+                        }
                     }
-                }
-                if (fileList.length > 0) {
-                    document.querySelector('.loader-container').style.display = 'flex';
-                    const fileListString = fileList.join(",");
-                    window.location.href = "workflow.do?historyId=${historyId}&fileList=" + encodeURIComponent(fileListString);
-                } else {
-                    alert("Please enter at least one file link.");
-                }
-            }
+                    if (filesURLsTextArea.length > 0) {
+                        document.querySelector('.loader-container').style.display = 'flex';
+                        window.location.href = "workflow.do?apiKey=" + apiKey + "&galaxyUrl=" + galaxyUrl + "&historyId=${historyId}&filesURLs=" + filesURLsTextArea.join("&filesURLs=");
+                    } else {
+                        alert("Please enter at least one file link.");
+                    }
+                });
+                $('#back_workflow').click(function () {
+                    history.back();
+                });
+            });
         </script>
 
     </head>
@@ -51,9 +57,12 @@
             <h4>Write in the textarea the absolute path or url of the files you want to upload</h4>
             <p>📝 Use one line per file as in the placeholders</p>
             <textarea id="filesTextarea" rows="5" placeholder='https://application/example/file.fasta &#10;/home/usr/example.txt'></textarea>
+            <c:if test="${not empty error}">
+                <p class="error">${error}</p>
+            </c:if>
             <div class="space-container">
-                <button type="button" class="back" onclick="history.back()">Back</button>
-                <button type="button" class="submit" onclick="handleNext()">Next</button>
+                <button id="back_workflow" type="button" class="back">Back</button>
+                <button id="next_workflow" type="button" class="submit">Next</button>
             </div>
         </div>
     </body>
